@@ -1,0 +1,14 @@
+.Header {
+    height: 60px;
+}
+.TopBar {
+    background-color: black;
+}
+.TopLeftBar {
+   justify-content: flex-start;
+   display: flex;
+   flex-grow: 1;
+   font-family: 'Courier' !important;
+   cursor: pointer;
+   font-size: 25px !important;
+}
