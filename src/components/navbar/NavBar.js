@@ -11,6 +11,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Settings from '@mui/icons-material/Settings';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import Drawer from '@mui/material/Drawer';
 import CloseIcon from '@mui/icons-material/Close';
 import './NavBar.css';
@@ -52,6 +53,13 @@ const NavBar = () => {
                 <ListItem button key='contact' onClick={() => { handleRedirect('/settings') }}>
                     <ListItemIcon>{<Settings />}</ListItemIcon>
                     <ListItemText primary='Settings' />
+                </ListItem>
+            </List>
+            <Divider />
+            <List>
+                <ListItem button key='github'  onClick={() => { window.location.href = 'https://github.com/plebworks/plebnode-dashboard'}}>
+                    <ListItemIcon>{ <GitHubIcon />}</ListItemIcon>
+                    <ListItemText primary='GitHub - Source Code' />
                 </ListItem>
             </List>
             <Divider />
