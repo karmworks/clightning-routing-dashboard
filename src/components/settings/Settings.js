@@ -150,13 +150,12 @@ const Settings = () => {
 
         try {
             let cleanRune = connection.rune.trim().replace(/(^"|"$)/g, '');//remove any leading/trailing space or quotes
-            let delimiterIndex = cleanRune.lastIndexOf('_') + 1;
-            let restrictionsRune = cleanRune.substr(delimiterIndex);
-            let decodedRune = window.atob(restrictionsRune);
-            let restrictions = "method^list|method^get|method=summary&method/listdatastore"
-            let decodedRestrictions = decodedRune.substr((decodedRune.indexOf('&') + 1))
+            let decodedRune = window.atob(cleanRune.replace(/_/g, '/').replace(/-/g, '+'));//Rune is url safe encoded so replace '_' & '-'  
+            const restrictions = "method^list|method^get|method=summary&method/listdatastore";
+            //Extract the restrictions substring starting with the first "method" occurance. 
+            let decodedRestrictions = decodedRune.substr((decodedRune.indexOf("method")))
+            //If it does not exactly match then rune is not a readonly rune.
             if (restrictions !== decodedRestrictions) {
-           
                 isError.rune = true;
             }
         }
