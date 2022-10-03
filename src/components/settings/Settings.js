@@ -152,10 +152,11 @@ const Settings = () => {
             let cleanRune = connection.rune.trim().replace(/(^"|"$)/g, '');//remove any leading/trailing space or quotes
             let decodedRune = window.atob(cleanRune.replace(/_/g, '/').replace(/-/g, '+'));//Rune is url safe encoded so replace '_' & '-'  
             const restrictions = "method^list|method^get|method=summary&method/listdatastore";
+            const restrictionsPreV12 = "method^list|method^get|method=summary&method/getsharedsecret&method/listdatastore";
             //Extract the restrictions substring starting with the first "method" occurance. 
             let decodedRestrictions = decodedRune.substr((decodedRune.indexOf("method")))
             //If it does not exactly match then rune is not a readonly rune.
-            if (restrictions !== decodedRestrictions) {
+            if (restrictions !== decodedRestrictions && restrictionsPreV12 !== decodedRestrictions) {
                 isError.rune = true;
             }
         }
