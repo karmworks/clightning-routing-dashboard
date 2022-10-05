@@ -320,7 +320,7 @@ const Home = () => {
                 <List dense style={{ padding: "0px", }}>
                     <ListItem key="1" style={{ justifyContent: "center" }}>
                         <Typography variant="h5" component="span" color="black" style={{ fontSize: "1.4em", fontWeight: "bold", marginRight: "100px", overflowWrap: "anywhere" }}>
-                            {'MyAwesomeNode'}
+                            {getinfo.alias}
                         </Typography>
                         <Typography variant="body" component="span" style={{ fontSize: "2em" }} color="black">
                             <Tooltip title={`${connectionStatus.connected ? "Connection Status: Connected to lightning node, Auto Refresh: ON" : (connectionStatus.initialized ? "Connection Status: Connecting to lightning node, please wait." : "Connection Status: Disconnected from lightning node. Refresh browser to reconnect.")}`}>
