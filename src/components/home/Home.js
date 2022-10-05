@@ -51,13 +51,15 @@ const Home = () => {
 
                 let list_nodes_res = await go(connectionValues, "listnodes", { id: element.id });
                 let alias = list_nodes_res.result.nodes.length > 0 ? list_nodes_res.result.nodes[0].alias : "";
-                let msatoshi_peer = element.channels[0].msatoshi_total - element.channels[0].msatoshi_to_us;
+                element.sum_msatoshi_total = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_total;}, 0);
+                element.sum_msatoshi_to_us = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us;}, 0);
+                element.msatoshi_peer = element.sum_msatoshi_total - element.sum_msatoshi_to_us;
+                element.sum_in_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.in_msatoshi_fulfilled;}, 0);
+                element.sum_out_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.out_msatoshi_fulfilled;}, 0);
 
                 list_peers.push({
-                    ...{ "id": element.id },
                     ...{ "alias": alias },
-                    ...{ "msatoshi_peer": msatoshi_peer },
-                    ...element.channels[0]
+                    ...element
                 });
             }
 
@@ -280,11 +282,24 @@ const Home = () => {
         return res
     }
 
+    function getAlias(short_channel_id){
+
+        let peer = listpeers.find((peer) => {return peer.channels.find((item) => item.short_channel_id === short_channel_id);});
+
+        if(peer){
+            return peer.alias;
+        }
+        else{
+            return 'Disconnected Peer'
+        }
+
+    }
+
     return (
 
         <Grid container spacing={1} style={{ background: "lightgray", paddingLeft: "20px" }}>
 
-            {loading && <Grid item xs={12} sm={12} lg={12} >
+            {!listpeers && <Grid item xs={12} sm={12} lg={12} >
                 <LinearProgress color="secondary" />
                 <LinearProgress color="secondary" />
             </Grid>}
@@ -332,7 +347,7 @@ const Home = () => {
             </Grid>}
 
             <Grid item xs={12} sm={6} lg={6} style={{ height: "40vh", paddingRight: "20px" }}>
-                {(listforwards.failed || listforwards.localfailed || listforwards.settled || listforwards.offered) &&
+                {(listforwards.failed || listforwards.localfailed || listforwards.settled || listforwards.offered) && listpeers &&
                     <VictoryChart
                         domainPadding={10}
                         maxDomain={{ x: (Date.now() / 1000) }}
@@ -342,7 +357,10 @@ const Home = () => {
                                 voronoiBlacklist={["settled", "failed", "localfailed"]}
                                 labels={({ datum }) => `${datum.status === 'settled' ? 'Settled ' : (datum.status === 'local_failed' ? 'Local Failed ' : 'Failed ')} Forward:
 ${datum.status === 'local_failed' ? `Fail Code: ${datum.failcode}\n` : ''}${satsFormatter.format(datum.in_msatoshi / 1000)} sats
-${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}`}
+${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}
+In Channel: ${datum.in_channel} (${getAlias(datum.in_channel)})
+Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`} 
+
                             />
                         }
                     >
@@ -429,7 +447,7 @@ ${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).forma
                     </VictoryChart>}
             </Grid>
             <Grid item xs={12} sm={6} lg={6} style={{ height: "40vh", paddingRight: "20px" }} >
-                {(listforwards.failed || listforwards.localfailed || listforwards.settled || listforwards.offered) &&
+                {(listforwards.failed || listforwards.localfailed || listforwards.settled || listforwards.offered) && listpeers &&
                     <VictoryChart
                         domainPadding={10}
                         maxDomain={{ x: (Date.now() / 1000) }}
@@ -438,7 +456,9 @@ ${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).forma
                         containerComponent={
                             <VictoryVoronoiContainer
                                 voronoiBlacklist={["earnedFee"]}
-                                labels={({ datum }) => `Fee Gained:\n${satsFormatter.format(datum.fee / 1000)} sats\n${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}`}
+                                labels={({ datum }) => `Fee Gained:\n${satsFormatter.format(datum.fee / 1000)} sats\n${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}
+In Channel: ${datum.in_channel} (${getAlias(datum.in_channel)})
+Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`} 
                             />
                         }
                     >
@@ -506,10 +526,10 @@ ${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).forma
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
-                            data={listpeers} x="alias" y="msatoshi_to_us"
+                            data={listpeers} x="alias" y="sum_msatoshi_to_us"
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
-Short Channel Id: ${datum.short_channel_id}
-Local: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats
+Short Channel Id: ${datum.channels.reduce((accumulator, channel) => {return accumulator + channel.short_channel_id + '\n';}, '')}
+Local: ${satsFormatter.format(datum.sum_msatoshi_to_us / 1000)} sats
 Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                             labelComponent={<VictoryTooltip />}
 
@@ -521,8 +541,8 @@ Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                             }}
                             data={listpeers} x="alias" y="msatoshi_peer"
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
-Short Channel Id: ${datum.short_channel_id}
-Local: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats
+Short Channel Id: ${datum.channels.reduce((accumulator, channel) => {return accumulator + channel.short_channel_id + '\n';}, '')}
+Local: ${satsFormatter.format(datum.sum_msatoshi_to_us / 1000)} sats
 Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                             labelComponent={<VictoryTooltip />}
                         />
@@ -559,10 +579,10 @@ Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
-                            style={{ data: { fill: "#00a3de" } }} x="alias" y="in_msatoshi_fulfilled"
+                            style={{ data: { fill: "#00a3de" } }} x="alias" y="sum_in_msatoshi_fulfilled"
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
-Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.in_msatoshi_fulfilled / 1000)} sats
-Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.out_msatoshi_fulfilled / 1000)} sats`}
+Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_in_msatoshi_fulfilled / 1000)} sats
+Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_fulfilled / 1000)} sats`}
                             labelComponent={<VictoryTooltip />}
                         />
 
@@ -572,10 +592,10 @@ Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.out_msatoshi_fulfill
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
-                            style={{ data: { fill: "#7c270b" } }} x="alias" y="out_msatoshi_fulfilled"
+                            style={{ data: { fill: "#7c270b" } }} x="alias" y="sum_out_msatoshi_fulfilled"
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
-Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.in_msatoshi_fulfilled / 1000)} sats
-Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.out_msatoshi_fulfilled / 1000)} sats`}
+Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_in_msatoshi_fulfilled / 1000)} sats
+Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_fulfilled / 1000)} sats`}
                             labelComponent={<VictoryTooltip />}
 
 

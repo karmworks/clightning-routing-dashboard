@@ -1,3 +1,6 @@
 .grid-header{
     color:coral;
 }
+.VictoryContainer svg{
+    overflow: visible;
+}
