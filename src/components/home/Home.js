@@ -38,7 +38,7 @@ const Home = () => {
     let nodesocket = null;
     let satsFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "0" });
     let btcFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "6" });
-    let chartDays = 1;
+    let chartDays = 4;
 
     async function flattenListPeers(connectionValues, result) {
 
@@ -53,6 +53,14 @@ const Home = () => {
                 let alias = list_nodes_res.result.nodes.length > 0 ? list_nodes_res.result.nodes[0].alias : "";
                 element.sum_msatoshi_total = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_total;}, 0);
                 element.sum_msatoshi_to_us = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us;}, 0);
+                element.sum_msatoshi_to_us_min = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us_min;}, 0);
+                element.sum_msatoshi_to_us_max = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us_max;}, 0);
+                if(element.sum_msatoshi_to_us_min === element.sum_msatoshi_to_us_max){//Add an indicator if the peer is neither a source or a sink
+                    element.no_sats_moved = 5000000000;
+                }
+                else{
+                    element.no_sats_moved = 0;
+                }
                 element.msatoshi_peer = element.sum_msatoshi_total - element.sum_msatoshi_to_us;
                 element.sum_in_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.in_msatoshi_fulfilled;}, 0);
                 element.sum_out_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.out_msatoshi_fulfilled;}, 0);
@@ -290,7 +298,7 @@ const Home = () => {
             return peer.alias;
         }
         else{
-            return 'Disconnected Peer'
+            return 'Peer Not Found'
         }
 
     }
@@ -312,7 +320,7 @@ const Home = () => {
                 <List dense style={{ padding: "0px", }}>
                     <ListItem key="1" style={{ justifyContent: "center" }}>
                         <Typography variant="h5" component="span" color="black" style={{ fontSize: "1.4em", fontWeight: "bold", marginRight: "100px", overflowWrap: "anywhere" }}>
-                            {getinfo.alias}
+                            {'MyAwesomeNode'}
                         </Typography>
                         <Typography variant="body" component="span" style={{ fontSize: "2em" }} color="black">
                             <Tooltip title={`${connectionStatus.connected ? "Connection Status: Connected to lightning node, Auto Refresh: ON" : (connectionStatus.initialized ? "Connection Status: Connecting to lightning node, please wait." : "Connection Status: Disconnected from lightning node. Refresh browser to reconnect.")}`}>
@@ -558,7 +566,8 @@ Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                         style={{ labels: { fontSize: 11 } }}
                         data={[
                             { name: "Source", symbol: { fill: "#00a3de" } },
-                            { name: "Sink", symbol: { fill: "#7c270b" } }
+                            { name: "Sink", symbol: { fill: "#7c270b" } },
+                            { name: "Neither", symbol: { fill: "red" } }
                         ]}
                     />
                     <VictoryAxis
@@ -570,7 +579,7 @@ Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                         style={{ tickLabels: { fontSize: "9" } }}
                         tickFormat={(x) => (`${x / 100000000000} BTC`)}
                     />
-                    <VictoryGroup offset={4}
+                    <VictoryGroup offset={3}
                         colorScale={"qualitative"}
                     >
                         <VictoryBar
@@ -593,6 +602,20 @@ Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_ful
                                 onLoad: { duration: 1000 }
                             }}
                             style={{ data: { fill: "#7c270b" } }} x="alias" y="sum_out_msatoshi_fulfilled"
+                            labels={({ datum }) => `Peer Alias: ${datum.alias}
+Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_in_msatoshi_fulfilled / 1000)} sats
+Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_fulfilled / 1000)} sats`}
+                            labelComponent={<VictoryTooltip />}
+
+
+                        />
+                         <VictoryBar
+                            data={listpeers}
+                            animate={{
+                                duration: 2000,
+                                onLoad: { duration: 1000 }
+                            }}
+                            style={{ data: { fill: "red" } }} x="alias" y="no_sats_moved"
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
 Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_in_msatoshi_fulfilled / 1000)} sats
 Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_fulfilled / 1000)} sats`}
