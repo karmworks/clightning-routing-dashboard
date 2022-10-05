@@ -38,7 +38,7 @@ const Home = () => {
     let nodesocket = null;
     let satsFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "0" });
     let btcFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "6" });
-    let chartDays = 4;
+    let chartDays = 1;
 
     async function flattenListPeers(connectionValues, result) {
 
