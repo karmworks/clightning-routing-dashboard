@@ -1,10 +1,8 @@
 ## Plebnode Dashboard - Your Lightning Node Dashboard
 
-[![Known Vulnerabilities](https://snyk.io/test/github/plebworks/plebnode-dashboard/badge.svg)](https://snyk.io/test/github/plebworks/plebnode-dashboard)
+Plebnode Dashboad is a `LIVE` dashboard for your lightning node. It only supports core lightning node as of now. 
 
 ![Plebnode - Dashboard](./public/dashboard1.png)
-
-Plebnode Dashboad is a live dashboard for your lightning node. It only supports core lightning node as of now. 
 
 It connects to core lightning node's websocket port which can be set by adding experimental-websocket-port entry to ~/.lightning/config file/ For example, `experimental-websocket-port=9999` to expose port 9999 as websocket port.
 
@@ -36,6 +34,9 @@ You may also see any lint errors in the console.
 ### `npm test`
 
 Launches the test runner in the interactive watch mode.
+
+### vulnerability check
+Check vulnerability status [here](https://snyk.io/test/github/plebworks/plebnode-dashboard)
 
 ## Credits
 The dashboard is build upon the awesome work done by the [core lightning devs](https://github.com/ElementsProject/lightning/graphs/contributors) and [lnsocket](https://github.com/jb55/lnsocket) 
