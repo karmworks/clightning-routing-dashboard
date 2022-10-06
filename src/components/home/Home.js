@@ -38,6 +38,7 @@ const Home = () => {
     let nodesocket = null;
     let satsFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "0" });
     let btcFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "6" });
+    let tickerFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "3" });
     let chartDays = 1;
 
     async function flattenListPeers(connectionValues, result) {
@@ -51,24 +52,28 @@ const Home = () => {
 
                 let list_nodes_res = await go(connectionValues, "listnodes", { id: element.id });
                 let alias = list_nodes_res.result.nodes.length > 0 ? list_nodes_res.result.nodes[0].alias : "";
-                element.sum_msatoshi_total = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_total;}, 0);
-                element.sum_msatoshi_to_us = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us;}, 0);
-                element.sum_msatoshi_to_us_min = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us_min;}, 0);
-                element.sum_msatoshi_to_us_max = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us_max;}, 0);
-                if(element.sum_msatoshi_to_us_min === element.sum_msatoshi_to_us_max){//Add an indicator if the peer is neither a source or a sink
-                    element.no_sats_moved = 5000000000;
+                let sum_msatoshi_to_us_min = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us_min;}, 0);
+                let sum_msatoshi_to_us_max = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us_max;}, 0);
+                let no_sats_moved = 0;
+                if(sum_msatoshi_to_us_min === sum_msatoshi_to_us_max){//Add an indicator if the peer is neither a source or a sink
+                    no_sats_moved = 5000000000;
                 }
-                else{
-                    element.no_sats_moved = 0;
-                }
-                element.msatoshi_peer = element.sum_msatoshi_total - element.sum_msatoshi_to_us;
-                element.sum_in_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.in_msatoshi_fulfilled;}, 0);
-                element.sum_out_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.out_msatoshi_fulfilled;}, 0);
+                let sum_in_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.in_msatoshi_fulfilled;}, 0);
+                let sum_out_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.out_msatoshi_fulfilled;}, 0);
 
-                list_peers.push({
-                    ...{ "alias": alias },
-                    ...element
+                element.channels.forEach(channel => {
+                     let msatoshi_peer = channel.msatoshi_total - channel.msatoshi_to_us;
+                    list_peers.push({
+                        ...channel,
+                        alias,
+                        sum_in_msatoshi_fulfilled,
+                        sum_out_msatoshi_fulfilled,
+                        no_sats_moved,
+                        msatoshi_peer
+                    });
+                    
                 });
+     
             }
 
         };
@@ -133,7 +138,6 @@ const Home = () => {
     function checkError(response) {
 
         if(!response){
-            console.log('inside')
             setException({
                 error: true,
                 code: '',
@@ -228,7 +232,6 @@ const Home = () => {
 
 
         return () => {
-            console.log("removing listeners");
             script.removeEventListener("load", handleScript);
             script.removeEventListener("error", handleScript);
         }
@@ -242,16 +245,14 @@ const Home = () => {
             return true;
         }
         try {
-            console.log("creating socket");
             const LNSocket = await lnsocket_init(); // eslint-disable-line
             nodesocket = LNSocket();
             nodesocket.genkey();
             await nodesocket.connect_and_init(connectionValues.nodeid, `ws://${connectionValues.ipaddress}:${connectionValues.port}`);
-            console.log("socket created");
             return true;
         }
         catch (error) {
-            console.log("socket init error: {}", error);
+            console.log("socket init error: ", error);
             checkError(error);
             setConnectionStatus({
                 initialized: false,
@@ -277,7 +278,7 @@ const Home = () => {
                 checkError(res);
             }
             catch (error) {
-                console.log("socket connection error: {}", error);
+                console.log("socket connection error: ", error);
                 setConnectionStatus({
                     ...connectionStatus,
                     connected: false
@@ -290,9 +291,21 @@ const Home = () => {
         return res
     }
 
+    // find maxima for normalizing data
+    function getMaxima(field){
+        
+        if(field === 'PPM'){
+            return listpeers.reduce((max, peer) => {return max > peer.fee_proportional_millionths ? max : peer.fee_proportional_millionths;}, 0)
+        } 
+        else if(field === 'MSATOSHI_TOTAL'){
+            return listpeers.reduce((max, peer) => {return max > peer.msatoshi_total ? max : peer.msatoshi_total;}, 0)
+        }
+       
+    }
+
     function getAlias(short_channel_id){
 
-        let peer = listpeers.find((peer) => {return peer.channels.find((item) => item.short_channel_id === short_channel_id);});
+        let peer = listpeers.find((item) => item.short_channel_id === short_channel_id);
 
         if(peer){
             return peer.alias;
@@ -514,18 +527,31 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                         style={{ labels: { fontSize: 11 } }}
                         data={[
                             { name: "Local Sats", symbol: { fill: "#7a5195" } },
-                            { name: "Remote Sats", symbol: { fill: "#ef5675" } }
+                            { name: "Remote Sats", symbol: { fill: "#ef5675" } },
+                            { name: "Fee - PPM", symbol: { fill: "#7c270b" } }
                         ]}
                     />
                     <VictoryAxis
-                        label="Channel Balances"
+                        label="Channel Liquidity &amp; Fee PPM"
                         style={{ tickLabels: { display: "None" } }}
 
                     />
                     <VictoryAxis
                         dependentAxis
                         style={{ tickLabels: { fontSize: "9" } }}
-                        tickFormat={(x) => (`${x / 100000000000} BTC`)}
+                        // Re-scale ticks by multiplying by correct maxima
+                        tickFormat={(x) => (`${tickerFormatter.format((x * getMaxima('MSATOSHI_TOTAL')) / 100000000000)} BTC`)}
+                    />
+                    <VictoryAxis
+                        dependentAxis
+                        orientation="right"
+                        style={{
+                            axis: { stroke: "#7c270b" },
+                            tickLabels: { fontSize: "9" , fill: "#7c270b" }
+                          }}
+                        offsetX={50}
+                        // Re-scale ticks by multiplying by correct maxima
+                        tickFormat={(t) => (`${new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "0" }).format(t * getMaxima('PPM'))} ppm `)}
                     />
                     <VictoryStack>
                         <VictoryBar
@@ -534,10 +560,10 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
-                            data={listpeers} x="alias" y="sum_msatoshi_to_us"
+                            data={listpeers} x="short_channel_id" y={(datum) => datum.msatoshi_to_us / getMaxima('MSATOSHI_TOTAL')}
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
-Short Channel Id: ${datum.channels.reduce((accumulator, channel) => {return accumulator + channel.short_channel_id + '\n';}, '')}
-Local: ${satsFormatter.format(datum.sum_msatoshi_to_us / 1000)} sats
+Short Channel Id: ${datum.short_channel_id}
+Local: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats
 Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                             labelComponent={<VictoryTooltip />}
 
@@ -547,14 +573,27 @@ Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
-                            data={listpeers} x="alias" y="msatoshi_peer"
+                            data={listpeers} x="short_channel_id"  y={(datum) => datum.msatoshi_peer / getMaxima('MSATOSHI_TOTAL')}
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
-Short Channel Id: ${datum.channels.reduce((accumulator, channel) => {return accumulator + channel.short_channel_id + '\n';}, '')}
-Local: ${satsFormatter.format(datum.sum_msatoshi_to_us / 1000)} sats
+Short Channel Id: ${datum.short_channel_id}
+Local: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats
 Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats`}
                             labelComponent={<VictoryTooltip />}
-                        />
+                        />    
                     </VictoryStack>
+                    <VictoryScatter
+                            key={'ppm'}
+                            style={{ data: { fill: "#7c270b" } }}
+                            data={listpeers} x="short_channel_id" y={(datum) => datum.fee_proportional_millionths / getMaxima('PPM')}
+                            animate={{
+                                duration: 2000,
+                                onLoad: { duration: 1000 }
+                            }}
+                            labels={({ datum }) => `Peer Alias: ${datum.alias}
+                            Short Channel Id: ${datum.short_channel_id}
+                            Fee PPM: ${datum.fee_proportional_millionths} ppm`}
+                                                        labelComponent={<VictoryTooltip />}
+                        ></VictoryScatter>
 
                 </VictoryChart>}
             </Grid>
