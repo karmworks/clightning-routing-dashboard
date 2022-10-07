@@ -71,7 +71,7 @@ const NavBar = () => {
             <AppBar className="Header" position="sticky" style={{backgroundColor: "black"}}>
                 <Toolbar className="TopBar"   >
                     <Typography className="TopLeftBar" variant="h5" component="h1" color="inherit" onClick={() => { handleRedirect('/', true) }} >
-                        PlebNode<Typography component="span" style={{fontSize:"14px"}} >⚡DASHBOARD</Typography>
+                        PlebNode<Typography component="span" style={{fontSize:"14px"}} >⚡ ROUTER DASHBOARD</Typography>
                     </Typography>
                     <IconButton
                         color="inherit"

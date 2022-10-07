@@ -268,7 +268,7 @@ const Settings = () => {
                     <Card className="SettingsCard" >
                         <CardHeader
                             titleTypographyProps={{ variant: 'h6', component: 'h2' }}
-                            title={'Lightning Node Connection Settings'}
+                            title={'Routing Dashboard For Core Lightning Node - Connection Settings'}
                             subheader={'Update connection settings for your lightning node. Only Core Lightning supported as of now. LND is not supported.'}
                         />
                         <CardContent>

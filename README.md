@@ -1,6 +1,6 @@
-## Plebnode Dashboard - Your Lightning Node Dashboard
+## Plebnode Dashboard - Core Lightning Router Dashboard
 
-Plebnode Dashboad is a `LIVE` dashboard for your lightning node. It only supports core lightning node as of now. 
+Plebnode Dashboad is a `LIVE` routing dashboard for your Core Lightning node. You can run it to monitor `Forwards - Settled/Failed/Local Failed, Fee Gained, Channel Liquidity (local sats/remote sats) & Fee PPM`. You can also monitor which peers are `Sinks/Sources`. The dashboard `auto refreshes` itself so you can let it run on a computer screen to monitor your node status throughout the day. 
 
 ![Plebnode - Dashboard](./public/dashboard1.png)
 
