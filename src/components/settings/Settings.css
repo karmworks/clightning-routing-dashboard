@@ -3,7 +3,11 @@
     margin-bottom: 20px;
     padding: 20px;
 }
-
+.SettingsContainer{
+    background-image: url("../../../public/background.png");
+    background-size:contain;
+    background-position: center;
+}
 .Item {
     display: 'flex';
     justify-content: 'left';

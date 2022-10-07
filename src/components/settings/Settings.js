@@ -261,7 +261,7 @@ const Settings = () => {
 
     return (
 
-        <Grid container spacing={1} style={{}}>
+        <Grid container spacing={1} className="SettingsContainer" >
 
             <Grid item xs={12} sm={12} lg={12}>
                 <Container maxWidth="sm" >
