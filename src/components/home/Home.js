@@ -322,7 +322,7 @@ const Home = () => {
             let inHtlc = htlcs.reduce((count, htlc) => {return htlc.direction === "in"? count+1: count;}, 0);
             let outHtlc = htlcs.reduce((count, htlc) => {return htlc.direction === "out"? count+1: count;}, 0);
 
-            return `\n-----\nExpiring HTLCs\n Earliest Expiry: ${soonestExpiry - getinfo.blockheight } blocks.\nIn HTLCs: ${inHtlc}, Out HTLCs: ${outHtlc}`;
+            return `\n-----\nPending HTLCs\n Earliest Expiry: ${soonestExpiry - getinfo.blockheight } blocks.\nIn HTLCs: ${inHtlc}, Out HTLCs: ${outHtlc}`;
 
         }
         else{
