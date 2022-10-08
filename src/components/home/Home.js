@@ -48,7 +48,7 @@ const Home = () => {
         for (const element of result.peers) {
 
 
-            if (element.connected && element.channels.length > 0) {
+            if (element.channels.length > 0) {
 
                 let list_nodes_res = await go(connectionValues, "listnodes", { id: element.id });
                 let alias = list_nodes_res.result.nodes.length > 0 ? list_nodes_res.result.nodes[0].alias : "";
@@ -69,7 +69,8 @@ const Home = () => {
                         sum_in_msatoshi_fulfilled,
                         sum_out_msatoshi_fulfilled,
                         no_sats_moved,
-                        msatoshi_peer
+                        msatoshi_peer,
+                        connected: element.connected
                     });
                     
                 });
@@ -330,6 +331,10 @@ const Home = () => {
         }
     }
 
+    function getChannelLabel(datum){
+       return `Peer Alias: ${datum.alias}\nShort Channel Id: ${datum.short_channel_id}\nLocal: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats\nRemote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats ${getHtlcs(datum.htlcs)}${datum.connected === false ? '\n------\nCHANNEL NOT CONNECTED\n----':''}`;
+    }
+
     return (
 
         <Grid container spacing={1} style={{ background: "lightgray", paddingLeft: "20px" }}>
@@ -569,29 +574,23 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                     />
                     <VictoryStack>
                         <VictoryBar
-                            style={{ data: { fill: "#e28743" ,strokeWidth: 2, stroke: ({datum}) => datum.htlcs.length > 0 ? 'red': '' } }}
+                            style={{ data: {fill: ({datum}) => datum.connected === true ? '#e28743': 'dimgray', strokeWidth: 2, stroke: ({datum}) => datum.htlcs.length > 0 ? 'red': '' } }}
                             animate={{
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
                             data={listpeers} x="short_channel_id" y={(datum) => datum.msatoshi_to_us / getMaxima('MSATOSHI_TOTAL')}
-                            labels={({ datum }) => `Peer Alias: ${datum.alias}
-Short Channel Id: ${datum.short_channel_id}
-Local: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats
-Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats ${getHtlcs(datum.htlcs)}`}
+                            labels={({ datum }) => getChannelLabel(datum)}
                             labelComponent={<VictoryTooltip />}
 
                         /><VictoryBar
-                            style={{ data: { fill: "#00a3de" ,strokeWidth: 2, stroke: ({datum}) => datum.htlcs.length > 0 ? 'red': '' } }}
+                            style={{ data: { fill: ({datum}) => datum.connected === true ? '#00a3de': 'gray', strokeWidth: 2, stroke: ({datum}) => datum.htlcs.length > 0 ? 'red': '' } }}
                             animate={{
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
                             data={listpeers} x="short_channel_id"  y={(datum) => datum.msatoshi_peer / getMaxima('MSATOSHI_TOTAL')}
-                            labels={({ datum }) => `Peer Alias: ${datum.alias}
-Short Channel Id: ${datum.short_channel_id}
-Local: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats
-Remote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats ${getHtlcs(datum.htlcs)}`}
+                            labels={({ datum }) => getChannelLabel(datum)}
                             labelComponent={<VictoryTooltip />}
                         />    
                     </VictoryStack>
