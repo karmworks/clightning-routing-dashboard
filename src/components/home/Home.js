@@ -15,7 +15,6 @@ import { LinearProgress } from "@mui/material";
 const Home = () => {
     let location = useLocation();
     let navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
     const [exception, setException] = useState({
         error: false,
         code: '',
@@ -199,11 +198,8 @@ const Home = () => {
 
                 });
 
-                setLoading(false);
-
             }).catch((error) => {
                 console.log(error);
-                setLoading(false);
             })
         };
 
@@ -226,7 +222,6 @@ const Home = () => {
             script.addEventListener("error", handleScript);
         }
         else {//script was added during the initial load. This is route change as useEffect is dependent on location object
-            setLoading(true);
             loadData(connectionValues);
             
         }
@@ -332,8 +327,15 @@ const Home = () => {
     }
 
     function getChannelLabel(datum){
-       return `Peer Alias: ${datum.alias}\nShort Channel Id: ${datum.short_channel_id}\nLocal: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats\nRemote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats ${getHtlcs(datum.htlcs)}${datum.connected === false ? '\n------\nCHANNEL NOT CONNECTED\n----':''}`;
+       return `Peer Alias: ${datum.alias}\nShort Channel Id: ${datum.short_channel_id}\nLocal: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats\nRemote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats ${getHtlcs(datum.htlcs)}\n Fee PPM: ${datum.fee_proportional_millionths} ppm${datum.connected === false ? '\n------\nCHANNEL NOT CONNECTED\n----':''}`;
     }
+
+    const copyToClipboard = str => {//copy channel id to clipboard on chart click, for further investigation
+        if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(str);
+        }
+
+    };
 
     return (
 
@@ -445,6 +447,15 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
+                            events={[{
+                                target: "data",
+                                eventHandlers: {
+                                  onClick: (event, source) => {
+                                    copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
+                                    return [];
+                                  }
+                                }
+                            }]}
                         ></VictoryScatter>
                         <VictoryLine
                             name="localfailed"
@@ -464,6 +475,15 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
+                            events={[{
+                                target: "data",
+                                eventHandlers: {
+                                  onClick: (event, source) => {
+                                    copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
+                                    return [];
+                                  }
+                                }
+                            }]}
                         ></VictoryScatter>
                         <VictoryLine
                             name="settled"
@@ -483,6 +503,15 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
+                            events={[{
+                                target: "data",
+                                eventHandlers: {
+                                  onClick: (event, source) => {
+                                    copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
+                                    return [];
+                                  }
+                                }
+                            }]}
                         ></VictoryScatter>
                     </VictoryChart>}
             </Grid>
@@ -525,7 +554,18 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
 
                         <VictoryScatter
                             style={{ data: { fill: "green" } }}
-                            data={listforwards.settled.filter((forward) => (forward.received_time * 1000) > (Date.now() - 60 * 60 * 24 * chartDays * 1000))} x="received_time" y="fee"></VictoryScatter>
+                            data={listforwards.settled.filter((forward) => (forward.received_time * 1000) > (Date.now() - 60 * 60 * 24 * chartDays * 1000))} x="received_time" y="fee"
+                            events={[{
+                                target: "data",
+                                eventHandlers: {
+                                    onClick: (event, source) => {
+                                        copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
+                                        return [];
+                                    }
+                                }
+                            }]}
+                        >
+                        </VictoryScatter>
                         <VictoryLine
                             name="earnedFee"
                             data={listforwards.settled.filter((forward) => (forward.received_time * 1000) > (Date.now() - 60 * 60 * 24 * chartDays * 1000))} x="received_time" y="fee"
@@ -582,7 +622,15 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                             data={listpeers} x="short_channel_id" y={(datum) => datum.msatoshi_to_us / getMaxima('MSATOSHI_TOTAL')}
                             labels={({ datum }) => getChannelLabel(datum)}
                             labelComponent={<VictoryTooltip />}
-
+                            events={[{
+                                target: "data",
+                                eventHandlers: {
+                                  onClick: (event, source) => {
+                                    copyToClipboard(source.datum.short_channel_id);//Copy short channel id to clipboard on click
+                                    return [];
+                                  }
+                                }
+                              }]}
                         /><VictoryBar
                             style={{ data: { fill: ({datum}) => datum.connected === true ? '#00a3de': 'gray', strokeWidth: 2, stroke: ({datum}) => datum.htlcs.length > 0 ? 'red': '' } }}
                             animate={{
@@ -591,6 +639,15 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                             }}
                             data={listpeers} x="short_channel_id"  y={(datum) => datum.msatoshi_peer / getMaxima('MSATOSHI_TOTAL')}
                             labels={({ datum }) => getChannelLabel(datum)}
+                            events={[{
+                                target: "data",
+                                eventHandlers: {
+                                  onClick: (event, source) => {
+                                    copyToClipboard(source.datum.short_channel_id);//Copy short channel id to clipboard on click
+                                    return [];
+                                  }
+                                }
+                              }]}
                             labelComponent={<VictoryTooltip />}
                         />    
                     </VictoryStack>
