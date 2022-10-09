@@ -4,3 +4,15 @@
 .VictoryContainer svg{
     overflow: visible;
 }
+.Figures {
+    border: solid #e3e2e1;
+    display: flex;
+    flex-direction: row;
+    padding: 0px !important;
+}
+.Figures li{
+    border-right: solid #e3e2e1;
+}
+.Figures li:last-child {
+    border-right: none
+  }

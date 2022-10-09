@@ -25,6 +25,10 @@ const Home = () => {
         connected: true    
     });
     const [getinfo, setGetInfo] = useState(null);
+    const [listfunds, setListFunds] = useState({
+        onchain: null,
+        offchain: null
+    });
     const [listpeers, SetListPeers] = useState(null);
     const [listforwards, SetListForwards] = useState({
         settled: null,
@@ -79,6 +83,16 @@ const Home = () => {
         };
         
         return list_peers;
+    }
+
+    async function calculateFunds(funds) {
+
+        let onchainFunds = funds.outputs.reduce((accumulator, fund) => {return accumulator + fund.value;}, 0);
+        let offchainFunds = funds.channels.reduce((accumulator, fund) => {return accumulator + fund.channel_sat;}, 0);
+        setListFunds({
+            onchain: onchainFunds,
+            offchain: offchainFunds
+        })
     }
 
     async function processForwards(result) {
@@ -145,6 +159,14 @@ const Home = () => {
             });
             return true;
         }
+        else if(response.name === 'RuntimeError' && response.message.indexOf('Cannot allocate Wasm') > -1 ){
+            setException({
+                error: true,
+                code: '',
+                message: 'More than one browser tab may be running the Plebnode dashboard. Please close the other tabs and refresh the page.'
+            });
+            return true;
+        }
         else if (response && response.error) {
             console.log(response);
             setException({
@@ -177,24 +199,30 @@ const Home = () => {
 
                 setGetInfo(res.result);
 
-                go(connectionValues, "listforwards").then((response) => {
+                go(connectionValues, "listfunds").then((listfunds_response) => {
 
-                    processForwards(response.result);
+                    calculateFunds(listfunds_response.result);
+                    
+                    go(connectionValues, "listforwards").then((response) => {
 
-                    go(connectionValues, "listpeers").then((res) => {
-                        
-                        flattenListPeers(connectionValues, res.result).then((response) => {
-                            SetListPeers(response)
-                        });
+                        processForwards(response.result);
 
-                        clearTimeout(timer);
-                        timer = setTimeout(function () {
-                            loadData(connectionValues)
-                        }, 60000)
+                        go(connectionValues, "listpeers").then((res) => {
 
-                    }).catch((error) => {
-                        console.log(error);
-                    })
+                            flattenListPeers(connectionValues, res.result).then((response) => {
+                                SetListPeers(response)
+                            });
+
+                            clearTimeout(timer);
+                            timer = setTimeout(function () {
+                                loadData(connectionValues)
+                            }, 60000)
+
+                        }).catch((error) => {
+                            console.log(error);
+                        })
+
+                    });
 
                 });
 
@@ -339,7 +367,7 @@ const Home = () => {
 
     return (
 
-        <Grid container spacing={1} style={{ background: "lightgray", paddingLeft: "20px" }}>
+        <Grid container spacing={1} style={{ background: "lightgray", paddingLeft: "20px", paddingRight: "20px" }}>
 
             {!listpeers && <Grid item xs={12} sm={12} lg={12} >
                 <LinearProgress color="secondary" />
@@ -365,7 +393,7 @@ const Home = () => {
                     </ListItem>
                 </List>
 
-                <List dense style={{ display: "flex", flexDirection: "row", padding: "0px" }}>
+                <List dense className="Figures" >
                     {listforwards && listforwards.settled && <ListItem key="1" style={{ justifyContent: "center" }}>
                         <ListItemText >
                             <Typography variant="subtitle2" component="span" style={{ fontWeight: "bold" }} color="black">Payments Routed: </Typography>
@@ -382,6 +410,27 @@ const Home = () => {
                         <ListItemText>
                             <Typography variant="subtitle2" component="span" style={{ fontWeight: "bold" }} color="black">Fee Gained: </Typography>
                             <Typography variant="body2" component="span" style={{ fontWeight: "bold" }} color="black"> {Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "0" }).format(getinfo.msatoshi_fees_collected / 1000)} Sats</Typography>
+                        </ListItemText>
+
+                    </ListItem>}
+                </List>
+                <List dense className="Figures" style={{ borderTop: "none"}}>
+                    {listfunds && listfunds.onchain && listfunds.offchain && <ListItem key="2" style={{ justifyContent: "center" }}>
+                        <ListItemText>
+                            <Typography variant="subtitle2" component="span" style={{ fontWeight: "bold" }} color="black">Lightning Balance: </Typography>
+                            <Typography variant="body2" component="span" style={{ fontWeight: "bold" }} color="black"> {btcFormatter.format(listfunds.offchain / 100000000)} BTC </Typography>
+                        </ListItemText>
+                    </ListItem>}
+                    {listfunds && listfunds.onchain && listfunds.offchain && <ListItem key="1" style={{ justifyContent: "center" }}>
+                        <ListItemText >
+                            <Typography variant="subtitle2" component="span" style={{ fontWeight: "bold" }} color="black">On-Chain Balance: </Typography>
+                            <Typography variant="body2" component="span" style={{ fontWeight: "bold" }} color="black"> {btcFormatter.format(listfunds.onchain/ 100000000)} BTC </Typography>
+                        </ListItemText>
+                    </ListItem>}
+                    {listfunds && listfunds.onchain && listfunds.offchain && <ListItem key="3" style={{ justifyContent: "start" }}>
+                        <ListItemText>
+                            <Typography variant="subtitle2" component="span" style={{ fontWeight: "bold" }} color="black">Total Balance: </Typography>
+                            <Typography variant="body2" component="span" style={{ fontWeight: "bold" }} color="black"> {btcFormatter.format((listfunds.onchain + listfunds.offchain)/ 100000000)} BTC</Typography>
                         </ListItemText>
 
                     </ListItem>}
