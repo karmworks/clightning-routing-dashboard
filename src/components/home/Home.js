@@ -37,6 +37,7 @@ const Home = () => {
         offered: null,
         settledSats: null
     });
+    const [externalMutations, SetExternalMutations] = useState([]);
 
     let nodesocket = null;
     let satsFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "0" });
@@ -365,6 +366,79 @@ const Home = () => {
 
     };
 
+    function setMutations(datum) {
+        
+        if(!datum){
+            return;
+        }
+        
+        let inChannelKey = listpeers.findIndex((channel) => channel.short_channel_id === datum.in_channel);
+        let outChannelKey = listpeers.findIndex((channel) => channel.short_channel_id === datum.out_channel);
+
+        SetExternalMutations([
+            {
+                childName: "our_sats_bar",
+                target: "data",
+                eventKey: "all",
+                mutation: (props) => {
+                    return {
+                        style: Object.assign({}, props.style, { stroke: "" })
+                    };
+                }
+            },
+            {
+                childName:  "their_sats_bar",
+                target: "data",
+                eventKey: "all",
+                mutation: (props) => {
+                    return {
+                        style: Object.assign({}, props.style, { stroke: "" })
+                    };
+                }
+            },
+            {
+                childName: 'our_sats_bar',
+                eventKey: String(inChannelKey),
+                target: ["data"],
+                mutation: (props) => {
+                    return {
+                        style: Object.assign({}, props.style, { stroke: "white" })
+                    };
+                }
+            },
+            {
+                childName: 'their_sats_bar',
+                eventKey: String(inChannelKey),
+                target: ["data"],
+                mutation: (props) => {
+                    return {
+                        style: Object.assign({}, props.style, { stroke: "white" })
+                    };
+                }
+            },
+            {
+                childName: 'our_sats_bar',
+                eventKey: String(outChannelKey),
+                target: ["data"],
+                mutation: (props) => {
+                    return {
+                        style: Object.assign({}, props.style, { stroke: "black" })
+                    };
+                }
+            },
+            {
+                childName: 'their_sats_bar',
+                eventKey: String(outChannelKey),
+                target: ["data"],
+                mutation: (props) => {
+                    return {
+                        style: Object.assign({}, props.style, { stroke: "black" })
+                    };
+                }
+            }
+        ]);
+    }
+
     return (
 
         <Grid container spacing={1} style={{ background: "lightgray", paddingLeft: "20px", paddingRight: "20px" }}>
@@ -446,6 +520,7 @@ const Home = () => {
                         containerComponent={
                             <VictoryVoronoiContainer
                                 voronoiBlacklist={["settled", "failed", "localfailed"]}
+                                onActivated={(points, props) => setMutations(points[0])}
                                 labels={({ datum }) => `${datum.status === 'settled' ? 'Settled ' : (datum.status === 'local_failed' ? 'Local Failed ' : 'Failed ')} Forward:
 ${datum.status === 'local_failed' ? `Fail Code: ${datum.failcode}\n` : ''}${satsFormatter.format(datum.in_msatoshi / 1000)} sats
 ${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}
@@ -499,10 +574,10 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                             events={[{
                                 target: "data",
                                 eventHandlers: {
-                                  onClick: (event, source) => {
-                                    copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
-                                    return [];
-                                  }
+                                    onClick: (event, source) => {
+                                        copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
+                                        return [];
+                                    }
                                 }
                             }]}
                         ></VictoryScatter>
@@ -527,10 +602,10 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                             events={[{
                                 target: "data",
                                 eventHandlers: {
-                                  onClick: (event, source) => {
-                                    copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
-                                    return [];
-                                  }
+                                    onClick: (event, source) => {
+                                        copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
+                                        return [];
+                                    }
                                 }
                             }]}
                         ></VictoryScatter>
@@ -555,10 +630,10 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                             events={[{
                                 target: "data",
                                 eventHandlers: {
-                                  onClick: (event, source) => {
-                                    copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
-                                    return [];
-                                  }
+                                    onClick: (event, source) => {
+                                        copyToClipboard(`In Channel: ${source.datum.in_channel} Out Channel: ${source.datum.out_channel} `);//Copy short channel id to clipboard on click
+                                        return [];
+                                    }
                                 }
                             }]}
                         ></VictoryScatter>
@@ -574,7 +649,8 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                         containerComponent={
                             <VictoryVoronoiContainer
                                 voronoiBlacklist={["earnedFee"]}
-                                labels={({ datum }) => `Fee Gained:\n${satsFormatter.format(datum.fee / 1000)} sats\n${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}
+                                onActivated={(points, props) => setMutations(points[0])}
+                                labels={({ datum }) =>  `Fee Gained:\n${satsFormatter.format(datum.fee / 1000)} sats\n${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}
 In Channel: ${datum.in_channel} (${getAlias(datum.in_channel)})
 Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`} 
                             />
@@ -628,7 +704,7 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                     </VictoryChart>}
             </Grid>
             <Grid item xs={12} sm={6} lg={6} style={{ height: "40vh", paddingRight: "20px" }} >
-                {listpeers && <VictoryChart domainPadding={10}>
+                {listpeers && <VictoryChart externalEventMutations={externalMutations} events={[ {target: "data",eventHandlers: {}} ]} domainPadding={10}>
                     <VictoryLegend x={45} y={10}
                         orientation="horizontal"
                         gutter={10}
@@ -663,6 +739,7 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                     />
                     <VictoryStack>
                         <VictoryBar
+                            name="our_sats_bar"
                             style={{ data: {fill: ({datum}) => datum.connected === true ? '#e28743': 'dimgray', strokeWidth: 2, stroke: ({datum}) => datum.htlcs.length > 0 ? 'red': '' } }}
                             animate={{
                                 duration: 2000,
@@ -681,6 +758,7 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                                 }
                               }]}
                         /><VictoryBar
+                            name="their_sats_bar"
                             style={{ data: { fill: ({datum}) => datum.connected === true ? '#00a3de': 'gray', strokeWidth: 2, stroke: ({datum}) => datum.htlcs.length > 0 ? 'red': '' } }}
                             animate={{
                                 duration: 2000,
