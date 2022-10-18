@@ -59,7 +59,7 @@ const NavBar = () => {
             <List>
                 <ListItem button key='github'  onClick={() => { window.location.href = 'https://github.com/plebworks/plebnode-dashboard'}}>
                     <ListItemIcon>{ <GitHubIcon />}</ListItemIcon>
-                    <ListItemText primary='GitHub - Source Code' />
+                    <ListItemText primary='Open Source - GitHub' />
                 </ListItem>
             </List>
             <Divider />

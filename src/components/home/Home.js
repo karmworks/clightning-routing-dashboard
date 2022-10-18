@@ -35,7 +35,8 @@ const Home = () => {
         failed: null,
         localfailed: null,
         offered: null,
-        settledSats: null
+        settledSats: null,
+        settledChannelsWithPPM: null
     });
     const [externalMutations, SetExternalMutations] = useState([]);
 
@@ -56,29 +57,32 @@ const Home = () => {
 
                 let list_nodes_res = await go(connectionValues, "listnodes", { id: element.id });
                 let alias = list_nodes_res.result.nodes.length > 0 ? list_nodes_res.result.nodes[0].alias : "";
-                let sum_msatoshi_to_us_min = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us_min;}, 0);
-                let sum_msatoshi_to_us_max = element.channels.reduce((accumulator, channel) => {return accumulator + channel.msatoshi_to_us_max;}, 0);
+                let sum_msatoshi_to_us_min = element.channels.reduce((accumulator, channel) => { return accumulator + channel.msatoshi_to_us_min; }, 0);
+                let sum_msatoshi_to_us_max = element.channels.reduce((accumulator, channel) => { return accumulator + channel.msatoshi_to_us_max; }, 0);
                 let no_sats_moved = 0;
-                if(sum_msatoshi_to_us_min === sum_msatoshi_to_us_max){//Add an indicator if the peer is neither a source or a sink
+                if (sum_msatoshi_to_us_min === sum_msatoshi_to_us_max) {//Add an indicator if the peer is neither a source or a sink
                     no_sats_moved = 5000000000;
                 }
-                let sum_in_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.in_msatoshi_fulfilled;}, 0);
-                let sum_out_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => {return accumulator + channel.out_msatoshi_fulfilled;}, 0);
+                let sum_in_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => { return accumulator + channel.in_msatoshi_fulfilled; }, 0);
+                let sum_out_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => { return accumulator + channel.out_msatoshi_fulfilled; }, 0);
 
                 element.channels.forEach(channel => {
-                     let msatoshi_peer = channel.msatoshi_total - channel.msatoshi_to_us;
-                    list_peers.push({
-                        ...channel,
-                        alias,
-                        sum_in_msatoshi_fulfilled,
-                        sum_out_msatoshi_fulfilled,
-                        no_sats_moved,
-                        msatoshi_peer,
-                        connected: element.connected
-                    });
-                    
+                    let msatoshi_peer = channel.msatoshi_total - channel.msatoshi_to_us;
+                    if (channel.state === 'CHANNELD_NORMAL') {
+                        list_peers.push({
+                            ...channel,
+                            alias,
+                            sum_in_msatoshi_fulfilled,
+                            sum_out_msatoshi_fulfilled,
+                            no_sats_moved,
+                            msatoshi_peer,
+                            node_id: element.id,
+                            connected: element.connected
+                        });
+                    }
+
                 });
-     
+
             }
 
         };
@@ -105,19 +109,32 @@ const Home = () => {
 
         let totalFee = 0;
         let settledSats = 0;
+        let settledChannels = [];
+        let settledChannelsWithPPM = [];
         settledForwards.forEach(element => {
             totalFee = totalFee + element.fee;
             settledSats = settledSats + (element.out_msatoshi / 1000);
+            if (!settledChannels.includes(element.out_channel)){
+                settledChannels.push(element.out_channel);
+            }
         });
 
-
+        settledChannels.forEach((channel) => {
+            let settledChannelForwards = settledForwards.filter(forward => forward.out_channel === channel);
+            let totalChannelFeeMSats = settledChannelForwards.reduce((accumulator, forward) => {return accumulator + forward.fee ;}, 0);
+            let totalChannelOutMSats = settledChannelForwards.reduce((accumulator, forward) => {return accumulator + forward.out_msatoshi ;}, 0);
+            let maxPPM = settledChannelForwards.reduce((max, forward) => {return max >  (forward.fee * 1000000 / forward.out_msatoshi) ? max : (forward.fee * 1000000 / forward.out_msatoshi);}, 0)
+            let averagePPM = totalChannelFeeMSats * 1000000 / totalChannelOutMSats;
+            settledChannelsWithPPM.push({short_channel_id: channel, averagePPM: averagePPM, maxPPM: maxPPM });
+        });
 
         SetListForwards({
             settled: settledForwards,
             localfailed: localfailedForwards,
             failed: failedForwards,
             offered: offeredForwards,
-            settledSats: settledSats
+            settledSats: settledSats,
+            settledChannelsWithPPM: settledChannelsWithPPM
         })
     }
 
@@ -347,7 +364,7 @@ const Home = () => {
             let inHtlc = htlcs.reduce((count, htlc) => {return htlc.direction === "in"? count+1: count;}, 0);
             let outHtlc = htlcs.reduce((count, htlc) => {return htlc.direction === "out"? count+1: count;}, 0);
 
-            return `\n-----\nPending HTLCs\n Earliest Expiry: ${soonestExpiry - getinfo.blockheight } blocks.\nIn HTLCs: ${inHtlc}, Out HTLCs: ${outHtlc}`;
+            return `\n-----\nPending HTLCs\n Earliest Expiry: ${soonestExpiry - getinfo.blockheight } blocks.\nIn HTLCs: ${inHtlc}, Out HTLCs: ${outHtlc}\n------`;
 
         }
         else{
@@ -356,7 +373,12 @@ const Home = () => {
     }
 
     function getChannelLabel(datum){
-       return `Peer Alias: ${datum.alias}\nShort Channel Id: ${datum.short_channel_id}\nLocal: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats\nRemote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats ${getHtlcs(datum.htlcs)}\n Fee PPM: ${datum.fee_proportional_millionths} ppm${datum.connected === false ? '\n------\nCHANNEL NOT CONNECTED\n----':''}`;
+
+        let settledChannelWithPPM = listforwards.settledChannelsWithPPM.find((channel) => channel.short_channel_id === datum.short_channel_id);
+       return `Peer Alias: ${datum.alias}\nShort Channel Id: ${datum.short_channel_id}\nLocal: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats\nRemote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats ${getHtlcs(datum.htlcs)}\n Fee PPM: ${datum.fee_proportional_millionths} ppm
+Settled Max Fee: ${settledChannelWithPPM ? satsFormatter.format(settledChannelWithPPM.maxPPM): 0} ppm
+Settled Avg. Fee: ${settledChannelWithPPM ? satsFormatter.format(settledChannelWithPPM.averagePPM): 0} ppm
+${datum.connected === false ? '\n------\nCHANNEL NOT CONNECTED\n----':''}`;
     }
 
     const copyToClipboard = str => {//copy channel id to clipboard on chart click, for further investigation
@@ -371,7 +393,7 @@ const Home = () => {
         if(!datum){
             return;
         }
-        
+
         let inChannelKey = listpeers.findIndex((channel) => channel.short_channel_id === datum.in_channel);
         let outChannelKey = listpeers.findIndex((channel) => channel.short_channel_id === datum.out_channel);
 
@@ -704,7 +726,7 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                     </VictoryChart>}
             </Grid>
             <Grid item xs={12} sm={6} lg={6} style={{ height: "40vh", paddingRight: "20px" }} >
-                {listpeers && <VictoryChart externalEventMutations={externalMutations} events={[ {target: "data",eventHandlers: {}} ]} domainPadding={10}>
+                {listpeers && listforwards.settledChannelsWithPPM &&  <VictoryChart externalEventMutations={externalMutations} events={[ {target: "data",eventHandlers: {}} ]} domainPadding={10}>
                     <VictoryLegend x={45} y={10}
                         orientation="horizontal"
                         gutter={10}
@@ -795,7 +817,7 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                 </VictoryChart>}
             </Grid>
             <Grid item xs={12} sm={6} lg={6} style={{ height: "40vh", paddingRight: "20px" }} >
-                {listpeers && <VictoryChart minDomain={{ y: 0 }}>
+                {listpeers && listforwards.settledChannelsWithPPM && <VictoryChart minDomain={{ y: 0 }}>
                     <VictoryLegend x={45} y={10}
                         orientation="horizontal"
                         gutter={10}
@@ -824,7 +846,7 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
-                            style={{ data: { fill: "#00a3de" } }} x="alias" y="sum_in_msatoshi_fulfilled"
+                            style={{ data: { fill: "#00a3de" } }} x="node_id" y="sum_in_msatoshi_fulfilled"
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
 Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_in_msatoshi_fulfilled / 1000)} sats
 Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_fulfilled / 1000)} sats`}
@@ -837,7 +859,7 @@ Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_ful
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
-                            style={{ data: { fill: "#ef5675" } }} x="alias" y="sum_out_msatoshi_fulfilled"
+                            style={{ data: { fill: "#ef5675" } }} x="node_id" y="sum_out_msatoshi_fulfilled"
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
 Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_in_msatoshi_fulfilled / 1000)} sats
 Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_fulfilled / 1000)} sats`}
@@ -851,7 +873,7 @@ Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_ful
                                 duration: 2000,
                                 onLoad: { duration: 1000 }
                             }}
-                            style={{ data: { fill: "black" } }} x="alias" y="no_sats_moved"
+                            style={{ data: { fill: "black" } }} x="node_id" y="no_sats_moved"
                             labels={({ datum }) => `Peer Alias: ${datum.alias}
 Inbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_in_msatoshi_fulfilled / 1000)} sats
 Outbound Forwarding Fulfilled: ${satsFormatter.format(datum.sum_out_msatoshi_fulfilled / 1000)} sats`}
