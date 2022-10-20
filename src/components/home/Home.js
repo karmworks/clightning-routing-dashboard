@@ -93,7 +93,7 @@ const Home = () => {
     async function calculateFunds(funds) {
 
         let onchainFunds = funds.outputs.reduce((accumulator, fund) => {return accumulator + fund.value;}, 0);
-        let offchainFunds = funds.channels.reduce((accumulator, fund) => {return accumulator + fund.channel_sat;}, 0);
+        let offchainFunds = funds.channels.reduce((accumulator, fund) => {return fund.state === 'CHANNELD_NORMAL' ||  fund.state === 'CHANNELD_AWAITING_LOCKIN' ? accumulator + fund.channel_sat : accumulator;}, 0);
         setListFunds({
             onchain: onchainFunds,
             offchain: offchainFunds
