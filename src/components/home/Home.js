@@ -68,10 +68,12 @@ const Home = () => {
 
                 for (const channel of element.channels)  {
 
-                    let list_channels_res = await go(connectionValues, "listchannels", { short_channel_id: channel.short_channel_id });
-                    let peer_channel = list_channels_res.result.channels.find((channel => channel.destination === node_id));
-                    let msatoshi_peer = channel.msatoshi_total - channel.msatoshi_to_us;
                     if (channel.state === 'CHANNELD_NORMAL') {
+
+                        let list_channels_res = await go(connectionValues, "listchannels", { short_channel_id: channel.short_channel_id });
+                        let peer_channel = list_channels_res.result.channels.find((channel => channel.destination === node_id));
+                        let msatoshi_peer = channel.msatoshi_total - channel.msatoshi_to_us;
+
                         list_peers.push({
                             ...channel,
                             alias,
@@ -98,7 +100,7 @@ const Home = () => {
 
     async function calculateFunds(funds) {
 
-        let onchainFunds = funds.outputs.reduce((accumulator, fund) => {return accumulator + fund.value;}, 0);
+        let onchainFunds = funds.outputs.reduce((accumulator, fund) => {return fund.status === 'confirmed' ? accumulator + fund.value : accumulator;}, 0);
         let offchainFunds = funds.channels.reduce((accumulator, fund) => {return fund.state === 'CHANNELD_NORMAL' ||  fund.state === 'CHANNELD_AWAITING_LOCKIN' ? accumulator + fund.channel_sat : accumulator;}, 0);
         setListFunds({
             onchain: onchainFunds,
