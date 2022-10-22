@@ -46,7 +46,7 @@ const Home = () => {
     let tickerFormatter = new Intl.NumberFormat("en-US", { minimumFractionDigits: "0", maximumFractionDigits: "3" });
     let chartDays = 1;
 
-    async function flattenListPeers(connectionValues, result) {
+    async function flattenListPeers(connectionValues, result, node_id) {
 
         let list_peers = [];
 
@@ -66,7 +66,10 @@ const Home = () => {
                 let sum_in_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => { return accumulator + channel.in_msatoshi_fulfilled; }, 0);
                 let sum_out_msatoshi_fulfilled = element.channels.reduce((accumulator, channel) => { return accumulator + channel.out_msatoshi_fulfilled; }, 0);
 
-                element.channels.forEach(channel => {
+                for (const channel of element.channels)  {
+
+                    let list_channels_res = await go(connectionValues, "listchannels", { short_channel_id: channel.short_channel_id });
+                    let peer_channel = list_channels_res.result.channels.find((channel => channel.destination === node_id));
                     let msatoshi_peer = channel.msatoshi_total - channel.msatoshi_to_us;
                     if (channel.state === 'CHANNELD_NORMAL') {
                         list_peers.push({
@@ -77,11 +80,14 @@ const Home = () => {
                             no_sats_moved,
                             msatoshi_peer,
                             node_id: element.id,
-                            connected: element.connected
+                            connected: element.connected,
+                            peer_fee_ppm: peer_channel.fee_per_millionth,
+                            peer_base_fee: peer_channel.base_fee_millisatoshi/1000
+
                         });
                     }
 
-                });
+                };
 
             }
 
@@ -216,6 +222,7 @@ const Home = () => {
             go(connectionValues, "getinfo").then((res) => {
 
                 setGetInfo(res.result);
+                let node_id = res.result.id;
 
                 go(connectionValues, "listfunds").then((listfunds_response) => {
 
@@ -227,7 +234,7 @@ const Home = () => {
 
                         go(connectionValues, "listpeers").then((res) => {
 
-                            flattenListPeers(connectionValues, res.result).then((response) => {
+                            flattenListPeers(connectionValues, res.result, node_id).then((response) => {
                                 SetListPeers(response)
                             });
 
@@ -375,10 +382,12 @@ const Home = () => {
     function getChannelLabel(datum){
 
         let settledChannelWithPPM = listforwards.settledChannelsWithPPM.find((channel) => channel.short_channel_id === datum.short_channel_id);
-       return `Peer Alias: ${datum.alias}\nShort Channel Id: ${datum.short_channel_id}\nLocal: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats\nRemote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats ${getHtlcs(datum.htlcs)}\n Fee PPM: ${datum.fee_proportional_millionths} ppm
+       return `Peer Alias: ${datum.alias}\nShort Channel Id: ${datum.short_channel_id}\nLocal: ${satsFormatter.format(datum.msatoshi_to_us / 1000)} sats\nRemote: ${satsFormatter.format(datum.msatoshi_peer / 1000)} sats\n Fee PPM: ${satsFormatter.format(datum.fee_proportional_millionths)} ppm
 Settled Max Fee: ${settledChannelWithPPM ? satsFormatter.format(settledChannelWithPPM.maxPPM): 0} ppm
 Settled Avg. Fee: ${settledChannelWithPPM ? satsFormatter.format(settledChannelWithPPM.averagePPM): 0} ppm
-${datum.connected === false ? '\n------\nCHANNEL NOT CONNECTED\n----':''}`;
+----- Peer Fee ------
+Peer Base Fee: ${satsFormatter.format(datum.peer_base_fee)}
+Peer Fee PPM: ${satsFormatter.format(datum.peer_fee_ppm)} ppm${getHtlcs(datum.htlcs)} ${datum.connected === false ? '\n------\nCHANNEL NOT CONNECTED\n----':''}`;
     }
 
     const copyToClipboard = str => {//copy channel id to clipboard on chart click, for further investigation
@@ -547,7 +556,7 @@ ${datum.connected === false ? '\n------\nCHANNEL NOT CONNECTED\n----':''}`;
 ${datum.status === 'local_failed' ? `Fail Code: ${datum.failcode}\n` : ''}${satsFormatter.format(datum.in_msatoshi / 1000)} sats
 ${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}
 In Channel: ${datum.in_channel} (${getAlias(datum.in_channel)})
-Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`} 
+Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})${ datum.fee ? `\nFee PPM: ${satsFormatter.format(datum.fee * 1000000 / datum.out_msatoshi)}` : ''}`} 
 
                             />
                         }
@@ -674,7 +683,7 @@ Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`}
                                 onActivated={(points, props) => setMutations(points[0])}
                                 labels={({ datum }) =>  `Fee Gained:\n${satsFormatter.format(datum.fee / 1000)} sats\n${new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'long' }).format(new Date(datum.received_time * 1000))}
 In Channel: ${datum.in_channel} (${getAlias(datum.in_channel)})
-Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})`} 
+Out Channel: ${datum.out_channel} (${getAlias(datum.out_channel)})${ datum.fee ? `\nFee PPM: ${satsFormatter.format(datum.fee * 1000000 / datum.out_msatoshi)}` : ''}`} 
                             />
                         }
                     >
