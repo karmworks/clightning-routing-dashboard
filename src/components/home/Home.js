@@ -83,8 +83,8 @@ const Home = () => {
                             msatoshi_peer,
                             node_id: element.id,
                             connected: element.connected,
-                            peer_fee_ppm: peer_channel.fee_per_millionth,
-                            peer_base_fee: peer_channel.base_fee_millisatoshi/1000
+                            peer_fee_ppm: peer_channel ? peer_channel.fee_per_millionth : '',
+                            peer_base_fee: peer_channel ? peer_channel.base_fee_millisatoshi/1000 : ''
 
                         });
                     }
