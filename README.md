@@ -18,22 +18,18 @@ You can see your live node dashboard at the above site.
 ## local build
 If would like to run the dashboard locally or would like to contribute to the code, please see the build instructions below:
 
+1. Install Node.js from its website [https://nodejs.org](https://nodejs.org/) website, if not already insalled
 
-In the project directory, you can run:
-### `npm install` 
-Installs all the dependencies
+2. In the project directory, run the below command to install the dependencies:
+    ### `npm install` 
 
-### `npm start`
-Runs the app in the development mode.
+3. Run the below command to build and run the dashboard:
+    ### `npm start`
 
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+4. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.
 
 ### vulnerability check
 Check vulnerability status [here](https://snyk.io/test/github/plebworks/plebnode-dashboard)
