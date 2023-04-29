@@ -10,10 +10,6 @@ It connects to core lightning node's websocket port which can be set by adding e
  
  You can create readonly rune by running this command: `lightning-cli commando-rune restrictions=readonly`
 
-## Automatic deployment
-The master branch from this repository has a CI (continuous integration) build enabled which deploys any new merges automatically to [http://my.plebnode.com](http://my.plebnode.com) 
-
-You can see your live node dashboard at the above site. 
 
 ## local build
 If would like to run the dashboard locally or would like to contribute to the code, please see the build instructions below:
@@ -31,8 +27,16 @@ If would like to run the dashboard locally or would like to contribute to the co
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
 
-### vulnerability check
-Check vulnerability status [here](https://snyk.io/test/github/plebworks/plebnode-dashboard)
+## Vulnerability check
+
+
+[![Known Vulnerabilities](https://snyk.io/test/github/plebworks/plebnode-dashboard/badge.svg)](https://snyk.io/test/github/plebworks/plebnode-dashboard)
+
+Check vulnerability details [here](https://snyk.io/test/github/plebworks/plebnode-dashboard)
+
+```diff
+- WARNING: FIX vulnerabilities BEFORE using the code. If you don't know how to fix them then DON'T use the code. This code is not actively maintained. Always scan open source code for vulnerabilities before using.
+```
 
 ## Credits
 The dashboard is build upon the awesome work done by the [core lightning devs](https://github.com/ElementsProject/lightning/graphs/contributors) and [lnsocket](https://github.com/jb55/lnsocket) 
